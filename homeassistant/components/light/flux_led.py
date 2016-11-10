@@ -117,7 +117,7 @@ class FluxLight(Light):
         """Return the brightness of this light between 0..255."""
         if self._mode == 'rgbw':
             return self._bulb.getWarmWhite255()
-        (red, green, blue) = self.rgb_color()
+        (red, green, blue) = self._bulb.getRgb()
         low = min(red, min(green, blue))
         high = max(red, max(green, blue))
         saturation = round(252 * ((high - low) / high))
@@ -142,14 +142,14 @@ class FluxLight(Light):
         brightness = kwargs.get(ATTR_BRIGHTNESS)
         effect = kwargs.get(ATTR_EFFECT)
         if rgb and brightness:
-            self._bulb.setRgb(*tuple(rgb), brightness=brightnes)
+            self._bulb.setRgb(*tuple(rgb), brightness=brightness)
         elif rgb:
             self._bulb.setRgb(*tuple(rgb))
         elif brightness:
             if self._mode == 'rgbw':
                 self._bulb.setWarmWhite255(brightness)
             elif self._mode == 'rgb':
-                (red, green, blue) = self.rgb_color()
+                (red, green, blue) = self._bulb.getRgb()
                 self._bulb.setRgb(red, green, blue, brightness=brightness)
         elif effect == EFFECT_RANDOM:
             self._bulb.setRgb(random.randrange(0, 255),
