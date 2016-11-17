@@ -81,6 +81,7 @@ def async_test_home_assistant(loop):
     loop._thread_ident = threading.get_ident()
 
     hass = ha.HomeAssistant(loop)
+    hass.async_track_tasks()
 
     hass.config.location_name = 'test home'
     hass.config.config_dir = get_test_config_dir()
@@ -102,8 +103,7 @@ def async_test_home_assistant(loop):
     @asyncio.coroutine
     def mock_async_start():
         with patch.object(loop, 'add_signal_handler'), \
-             patch('homeassistant.core._async_create_timer'), \
-             patch.object(hass, '_async_tasks_cleanup', return_value=None):
+                patch('homeassistant.core._async_create_timer'):
             yield from orig_start()
 
     hass.async_start = mock_async_start

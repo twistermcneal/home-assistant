@@ -129,7 +129,7 @@ class TestHomeAssistant(unittest.TestCase):
             """Test Coro."""
             call_count.append('call')
 
-        for i in range(50):
+        for i in range(3):
             self.hass.add_job(test_coro())
 
         run_coroutine_threadsafe(
@@ -137,13 +137,8 @@ class TestHomeAssistant(unittest.TestCase):
             loop=self.hass.loop
         ).result()
 
-        with patch.object(self.hass.loop, 'call_later') as mock_later:
-            run_callback_threadsafe(
-                self.hass.loop, self.hass._async_tasks_cleanup).result()
-            assert mock_later.called
-
-        assert len(self.hass._pending_tasks) == 0
-        assert len(call_count) == 50
+        assert len(self.hass._pending_tasks) == 3
+        assert len(call_count) == 3
 
     def test_async_add_job_pending_tasks_coro(self):
         """Add a coro to pending tasks."""
