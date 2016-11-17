@@ -274,6 +274,8 @@ class HomeAssistant(object):
             self._pending_tasks.clear()
             if len(pending) > 0:
                 yield from asyncio.wait(pending, loop=self.loop)
+            else:
+                yield from asyncio.sleep(0, loop=self.loop)
 
     def stop(self) -> None:
         """Stop Home Assistant and shuts down all threads."""
