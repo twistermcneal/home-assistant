@@ -246,6 +246,11 @@ class HomeAssistant(object):
         """Track tasks so you can wait for all tasks to be done."""
         self.async_add_job = self._async_add_job_tracking
 
+        def add_job(ha, target: Callable[..., None], *args: Any) -> None:
+            """Blocking add to async scheduler."""
+            run_callback_threadsafe(self.async_add_job, target, *args).result()
+        self.add_job = add_job
+
     @callback
     def async_run_job(self, target: Callable[..., None], *args: Any) -> None:
         """Run a job from within the event loop.
