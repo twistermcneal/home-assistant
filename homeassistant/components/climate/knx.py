@@ -96,8 +96,12 @@ class KNXThermostat(KNXMultiAddressDevice, ClimateDevice):
     def update(self):
         """Update KNX climate."""
         from knxip.conversion import knx2_to_float
+        from knxip.conversion import knx8bit_to_float
 
         super().update()
-
-        self._current_temp = knx2_to_float(self.value('temperature'))
-        self._target_temp = knx2_to_float(self.value('setpoint'))
+        _LOGGER.debug(self.value('temperature'))
+        _LOGGER.debug(self.value('setpoint'))
+        if self.dataChanged == True:
+          self._current_temp = knx2_to_float(self.value('temperature'))
+          self._target_temp = knx2_to_float(self.value('setpoint'))
+          self.dataChanged = False
