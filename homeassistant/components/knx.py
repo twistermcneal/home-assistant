@@ -91,7 +91,7 @@ class KNXConfig(object):
                 self.config.get('state_address'))
         else:
             self._state_address = None
-
+       
     @property
     def name(self):
         """The name given to the entity."""
@@ -137,7 +137,7 @@ class KNXGroupAddress(Entity):
             """
             if (addr == self.state_address) or (addr == self.address):
                 self._state = data
-                self.update_ha_state()
+                self.update_ha_state(True)
 
         KNXTUNNEL.register_listener(self.address, handle_knx_message)
         if self.state_address:
@@ -215,7 +215,7 @@ class KNXMultiAddressDevice(Entity):
 
     names = {}
     values = {}
-
+    dataChanged = False
     def __init__(self, hass, config, required, optional=None):
         """Initialize the device.
 
@@ -227,10 +227,23 @@ class KNXMultiAddressDevice(Entity):
         from knxip.core import parse_group_address, KNXException
 
         self._config = config
-        self._state = False
         self._data = None
         _LOGGER.debug("Initalizing KNX multi address device")
+		        
+        def handle_knx_message(addr, data):
+            """Handle an incoming KNX frame.
 
+            Handle an incoming frame and update our status if it contains
+            information relating to this device.
+            """
+            for attributeaddress, attributename in self.names.items():
+                if (addr == attributeaddress):
+                  if self.values[addr] != data:
+                    self.values[addr] = data
+                    self.dataChanged = True
+                    self.update_ha_state(True)
+                    
+           
         # parse required addresses
         for name in required:
             _LOGGER.info(name)
@@ -243,7 +256,19 @@ class KNXMultiAddressDevice(Entity):
                     "Group address for %s missing in configuration", paramname)
             addr = parse_group_address(addr)
             self.names[addr] = name
-
+            self.values[addr] = 0
+            KNXTUNNEL.register_listener(addr, handle_knx_message)
+            _LOGGER.debug(addr)
+			
+			 
+        for attributeaddress, attributename in self.names.items():
+            _LOGGER.debug(attributename)
+            _LOGGER.debug(attributeaddress)
+			
+			
+        if optional == None:
+                return 
+				
         # parse optional addresses
         for name in optional:
             paramname = '{}{}'.format(name, '_address')
@@ -254,7 +279,10 @@ class KNXMultiAddressDevice(Entity):
                 except KNXException:
                     _LOGGER.exception("Cannot parse group address %s", addr)
                 self.names[addr] = name
-
+                self.values[addr] = 0
+                KNXTUNNEL.register_listener(addr, handle_knx_message)
+                _LOGGER.debug(addr)
+    
     @property
     def name(self):
         """The entity's display name."""
@@ -264,7 +292,10 @@ class KNXMultiAddressDevice(Entity):
     def config(self):
         """The entity's configuration."""
         return self._config
-
+    @property
+    def state_address(self):
+        """Return the KNX group address."""
+        return self._config.state_address
     @property
     def should_poll(self):
         """Return the state of the polling, if needed."""
@@ -314,15 +345,37 @@ class KNXMultiAddressDevice(Entity):
         for attributeaddress, attributename in self.names.items():
             if attributename == name:
                 addr = attributeaddress
-
+                
         if addr is None:
             _LOGGER.exception("Attribute %s undefined", name)
             return False
-
+			
+        _LOGGER.debug("Address is: %s", addr)
+        _LOGGER.debug("Value is: %s", value)
         try:
-            KNXTUNNEL.group_write(addr, value)
+            KNXTUNNEL.group_write(addr, [value])
         except KNXException:
             _LOGGER.exception("Unable to write to KNX address: %s", addr)
             return False
 
         return True
+
+    def update(self):
+        """Get the state from KNX bus or cache."""
+        from knxip.core import KNXException
+
+        try:
+           
+            for attributeaddress, attributename in self.names.items():
+                res = KNXTUNNEL.group_read(attributeaddress, use_cache=self.cache)
+                    
+                if res:
+                  self.values[attributeaddress] = res[0]
+                else:
+                  _LOGGER.debug(
+                        "Unable to read from KNX address: %s (None)", attributeaddress)
+
+        except KNXException:
+            _LOGGER.exception(
+                "Unable to read State from KNX Bus: %s", attributeaddress)
+            return False
