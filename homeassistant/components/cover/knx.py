@@ -2,6 +2,7 @@
 Support for knx covers.
 
 For more details about this platform, please refer to the documentation at ???
+To Simulate the Cover the Demo Cover Code is used (track_utc_time_change)
 cover:
   - platform: knx
     name: test
@@ -186,6 +187,7 @@ class KNXCover(KNXMultiAddressDevice, CoverDevice):
             self._position -= time_up_down
         else:
             self._position += time_up_down
+	#Limit
         if self._position > 100:
            self._position = 100
         if self._position < 0:
@@ -213,8 +215,9 @@ class KNXCover(KNXMultiAddressDevice, CoverDevice):
         self.update_ha_state()
 		
     def update(self):
-        """Update KNX climate."""
-		
+        """Update KNX Cover. 
+	   We dont know the exact position so we use the last state from the bus
+	"""		
         if self.dataChanged == True:
           if self._unsub_listener_cover is None:
             if self.value('long') == [1]:
