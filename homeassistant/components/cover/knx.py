@@ -2,7 +2,13 @@
 Support for knx covers.
 
 For more details about this platform, please refer to the documentation at ???
-
+cover:
+  - platform: knx
+    name: test
+    short_address: 1/2/1
+    long_address: 1/2/2
+    time_up_down: 15
+    
 """
 import logging
 import subprocess
