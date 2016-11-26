@@ -17,22 +17,25 @@ _LOGGER = logging.getLogger(__name__)
 
 CONF_ADDRESS = 'address'
 CONF_SETPOINT_ADDRESS = 'setpoint_address'
+CONF_SETPOINT_STATE_ADDRESS = 'setpoint_state_address'
 CONF_TEMPERATURE_ADDRESS = 'temperature_address'
 
 DEFAULT_NAME = 'KNX Thermostat'
 DEPENDENCIES = ['knx']
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Required(CONF_ADDRESS): cv.string,
+    vol.Optional(CONF_ADDRESS): cv.string,
     vol.Required(CONF_SETPOINT_ADDRESS): cv.string,
     vol.Required(CONF_TEMPERATURE_ADDRESS): cv.string,
+    vol.Optional(CONF_SETPOINT_STATE_ADDRESS): cv.string,
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
 })
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Create and add an entity based on the configuration."""
-    add_devices([KNXThermostat(hass, KNXConfig(config))])
+    setpoint_state = config.get(CONF_SETPOINT_STATE_ADDRESS)
+    add_devices([KNXThermostat(hass, KNXConfig(config), setpoint_state)])
 
 
 class KNXThermostat(KNXMultiAddressDevice, ClimateDevice):
@@ -48,17 +51,18 @@ class KNXThermostat(KNXMultiAddressDevice, ClimateDevice):
     in future releases)
     """
 
-    def __init__(self, hass, config):
+    def __init__(self, hass, config, setpointstate):
         """Initialize the thermostat based on the given configuration."""
         KNXMultiAddressDevice.__init__(
-            self, hass, config, ['temperature', 'setpoint'], ['mode'])
+            self, hass, config, ['temperature', 'setpoint'], ['mode', 'setpoint_state'])
 
         self._unit_of_measurement = TEMP_CELSIUS  # KNX always used celsius
         self._away = False  # not yet supported
         self._is_fan_on = False  # not yet supported
         self._current_temp = None
         self._target_temp = None
-
+        self._setpointstate = setpointstate;
+        _LOGGER.info("Setpoint state: %s", self._setpointstate)
     @property
     def should_poll(self):
         """Polling is needed for the KNX thermostat."""
@@ -96,12 +100,18 @@ class KNXThermostat(KNXMultiAddressDevice, ClimateDevice):
     def update(self):
         """Update KNX climate."""
         from knxip.conversion import knx2_to_float
-        from knxip.conversion import knx8bit_to_float
+        #from knxip.conversion import knx8bit_to_float
 
         super().update()
-        _LOGGER.debug(self.value('temperature'))
-        _LOGGER.debug(self.value('setpoint'))
-        if self.dataChanged == True:
-          self._current_temp = knx2_to_float(self.value('temperature'))
+        _LOGGER.debug(self._setpointstate)
+       
+        self._current_temp = knx2_to_float(self.value('temperature'))
+        if self._setpointstate != None:   
+          self._target_temp = knx2_to_float(self.value('setpoint_state'))
+        else:
           self._target_temp = knx2_to_float(self.value('setpoint'))
-          self.dataChanged = False
+       
+       
+        _LOGGER.info(self._current_temp)
+        _LOGGER.info(self._target_temp)
+         
